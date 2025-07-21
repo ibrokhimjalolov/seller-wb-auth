@@ -1,0 +1,10 @@
+undetected-chromedriver
+fastapi
+uvicorn
+sqlalchemy
+asyncpg
+psycopg2-binary
+alembic
+pydantic
+python-dotenv
+setuptools
