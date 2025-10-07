@@ -3,6 +3,7 @@ from datetime import datetime
 import undetected_chromedriver as uc
 from sqlalchemy.ext.asyncio import AsyncSession
 import uuid
+from selenium import webdriver
 
 from database.repositories import DatabaseManager
 from database.models import User
@@ -83,7 +84,9 @@ class WildberriesAuthService:
         """Запрос кода авторизации (первый этап)"""
         try:
             # Создаем драйвер
-            driver = uc.Chrome(headless=True)
+            driver = webdriver.Remote(
+                command_executor="http://localhost:4444/wd/hub",
+            )
 
             # Запрашиваем код
             request_code(driver, phone)
