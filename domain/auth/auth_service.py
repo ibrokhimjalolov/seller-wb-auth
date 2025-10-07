@@ -9,6 +9,9 @@ from database.models import User
 from .auth import request_code, verify_code
 
 
+sessions = {}
+
+
 class WildberriesAuthService:
     """Сервис для авторизации в Wildberries"""
 
@@ -16,7 +19,7 @@ class WildberriesAuthService:
         self.session = session
         self.db_manager = DatabaseManager(session)
         # Хранилище активных сессий (в продакшене лучше использовать Redis)
-        self._active_sessions: Dict[str, Dict] = {}
+        self._active_sessions = sessions
 
     async def create_user(self, user_id: int) -> User:
         """Создать нового пользователя"""

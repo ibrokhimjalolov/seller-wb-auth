@@ -16,7 +16,7 @@ class User(Base):
     cookies = relationship("Cookie", back_populates="user", cascade="all, delete-orphan")
 
     def __repr__(self):
-        return f"<User(id={self.id}, user_id='{self.user_id}')>"
+        return f"<User(id={self.id})>"
 
 
 class Cookie(Base):

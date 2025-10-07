@@ -41,7 +41,6 @@ class CookieResponse(BaseModel):
 class UserWithCookiesResponse(BaseModel):
     """Схема ответа с пользователем и куками"""
     id: int
-    user_id: int
     created_at: datetime
     updated_at: datetime
     cookies: List[CookieResponse]
