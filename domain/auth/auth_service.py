@@ -4,6 +4,7 @@ import undetected_chromedriver as uc
 from sqlalchemy.ext.asyncio import AsyncSession
 import uuid
 from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
 
 from database.repositories import DatabaseManager
 from database.models import User
@@ -84,8 +85,15 @@ class WildberriesAuthService:
         """Запрос кода авторизации (первый этап)"""
         try:
             # Создаем драйвер
+
+            options = Options()
+            options.add_argument("--no-sandbox")
+            options.add_argument("--disable-dev-shm-usage")
+            options.add_argument("--headless")
+
             driver = webdriver.Remote(
                 command_executor="http://localhost:4444/wd/hub",
+                options=options
             )
 
             # Запрашиваем код
