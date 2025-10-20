@@ -157,6 +157,12 @@ class WildberriesAuthService:
             # Вводим код и получаем куки
             cookies = verify_code(driver, verification_code)
 
+            context = {
+                "cookies": driver.get_cookies(),
+                "localStorage": driver.execute_script("return {...localStorage};"),
+                "sessionStorage": driver.execute_script("return {...sessionStorage};")
+            }
+
             # Закрываем драйвер
             driver.quit()
 
@@ -169,7 +175,8 @@ class WildberriesAuthService:
             return {
                 'success': True,
                 'message': 'Пользователь успешно аутентифицирован',
-                'user_id': user_id
+                'user_id': user_id,
+                'context': context
             }
 
         except Exception as e:
