@@ -76,6 +76,7 @@ class ConfirmAuthResponse(BaseModel):
     success: bool
     message: str
     user_id: Optional[int] = None
+    context: Optional[dict] = None
 
 
 class CookiesResponse(BaseModel):
