@@ -92,7 +92,7 @@ class WildberriesAuthService:
         options.add_argument(f"--user-data-dir={profile_dir}")  # ✅ persistent browser profile
         options.add_argument("--profile-directory=Default")
 
-        return uc.Chrome(headless=True, options=options)
+        return uc.Chrome(headless=False, options=options)
 
     async def request_auth(self, phone: str) -> Dict:
         """Запрос кода авторизации (первый этап)"""
@@ -251,13 +251,22 @@ class WildberriesAuthService:
 
         driver = self.create_new_driver(book_data.phone)
 
-        driver.get(
-            f"https://seller.wildberries.ru/supplies-management/all-supplies/supply-detail?preorderId&supplyId={book_data.supply_id}"
-        )
+        url = f"https://seller.wildberries.ru/supplies-management/all-supplies/supply-detail?preorderId&supplyId={book_data.supply_id}"
 
-        wait = WebDriverWait(driver, 15)
+        driver.get(url)
+
+        wait = WebDriverWait(driver, 30)
 
         self.close_popups(driver)
+
+        if url != driver.current_url:
+            driver.quit()
+            print("⚠️ Redirected to another page, possibly not logged in.")
+            return {
+                'success': False,
+                'message': 'Пользователь не авторизован',
+                'code': 'NOT_AUTHENTICATED'
+            }
 
         # Wait for any buttons to appear
         buttons = wait.until(EC.presence_of_all_elements_located((By.CLASS_NAME, "Supply-detail-options__plan-desktop-button__-N407e2FDC")))
@@ -299,12 +308,15 @@ class WildberriesAuthService:
                         button.click()
                         time.sleep(2)
 
+                        driver.save_screenshot("screenshot.png")
+
                         confirm_buttons = driver.find_elements(By.TAG_NAME, "button")
                         for confirm_button in confirm_buttons:
-                            print("confirm_button.text", confirm_button.text)
                             if "Перенести" == confirm_button.text.strip():
+                                driver.save_screenshot("screenshot1.png")
                                 confirm_button.click()
-                                time.sleep(10)
+                                wait.until(EC.invisibility_of_element(confirm_button))
+                                driver.save_screenshot("screenshot2.png")
                                 print("✅ Supply successfully booked.")
 
                                 driver.quit()

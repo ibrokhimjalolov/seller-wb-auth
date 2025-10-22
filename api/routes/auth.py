@@ -87,14 +87,14 @@ async def book(
     session: AsyncSession = Depends(get_async_session)
 ):
     """Получить куки пользователя"""
-    try:
+    # try:
 
-        auth_service = WildberriesAuthService(session)
-        result = await auth_service.book(book_data)
-        return BookResponse(**result)
+    auth_service = WildberriesAuthService(session)
+    result = await auth_service.book(book_data)
+    return BookResponse(**result)
 
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Ошибка сервера: {str(e)}"
-        )
+    # except Exception as e:
+    #     raise HTTPException(
+    #         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+    #         detail=f"Ошибка сервера: {str(e)}"
+    #     )
