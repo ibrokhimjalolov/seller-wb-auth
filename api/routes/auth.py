@@ -7,7 +7,7 @@ from domain.auth.schemas import (
     UserWithCookiesResponse,
     RequestAuthRequest, RequestAuthResponse, ConfirmAuthRequest,
     ConfirmAuthResponse,
-    CookiesResponse
+    BookResponse, BookRequest
 )
 
 router = APIRouter(prefix="/auth", tags=["Авторизация"])
@@ -23,7 +23,6 @@ async def request_auth(
         auth_service = WildberriesAuthService(session)
 
         result = await auth_service.request_auth(
-            user_id=auth_data.user_id,
             phone=auth_data.phone
         )
 
@@ -46,10 +45,8 @@ async def confirm_auth(
         auth_service = WildberriesAuthService(session)
 
         result = await auth_service.confirm_auth(
-            user_id=auth_data.user_id,
             phone=auth_data.phone,
             verification_code=auth_data.verification_code,
-            session_id=auth_data.session_id
         )
 
         return ConfirmAuthResponse(**result)
@@ -61,23 +58,19 @@ async def confirm_auth(
         )
 
 
-@router.get("/users/{user_id}", response_model=UserWithCookiesResponse)
+@router.get("/users/{phone}", response_model=UserWithCookiesResponse)
 async def get_user_with_cookies(
-    user_id: int,
+    phone: int,
     session: AsyncSession = Depends(get_async_session)
 ):
     """Получить пользователя с куками"""
     try:
         auth_service = WildberriesAuthService(session)
-        user = await auth_service.get_user_with_cookies(user_id)
+        success = phone in auth_service._active_sessions
 
-        if not user:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="Пользователь не найден"
-            )
-
-        return UserWithCookiesResponse.from_orm(user)
+        return UserWithCookiesResponse(
+            success=success
+        )
 
     except HTTPException:
         raise
@@ -88,50 +81,17 @@ async def get_user_with_cookies(
         )
 
 
-@router.get("/users/{user_id}/cookies", response_model=CookiesResponse)
-async def get_user_cookies(
-    user_id: int,
+@router.post("/book", response_model=BookResponse)
+async def book(
+    book_data: BookRequest,
     session: AsyncSession = Depends(get_async_session)
 ):
     """Получить куки пользователя"""
     try:
+
         auth_service = WildberriesAuthService(session)
-        cookies = await auth_service.get_user_cookies(user_id)
-
-        return CookiesResponse(
-            user_id=user_id,
-            cookies=cookies
-        )
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Ошибка сервера: {str(e)}"
-        )
-
-
-@router.delete("/users/{user_id}", response_model=ConfirmAuthResponse)
-async def delete_user(
-    user_id: int,
-    session: AsyncSession = Depends(get_async_session)
-):
-    """Удалить пользователя"""
-    try:
-        auth_service = WildberriesAuthService(session)
-        success = await auth_service.delete_user(user_id)
-
-        if success:
-            return ConfirmAuthResponse(
-                success=True,
-                message="Пользователь успешно удален",
-                user_id=user_id
-            )
-        else:
-            return ConfirmAuthResponse(
-                success=False,
-                message="Пользователь не найден",
-                user_id=user_id
-            )
+        result = await auth_service.book(book_data)
+        return BookResponse(**result)
 
     except Exception as e:
         raise HTTPException(

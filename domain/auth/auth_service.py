@@ -1,15 +1,18 @@
 from typing import List, Dict, Optional
-from datetime import datetime
+from datetime import datetime, date
 import undetected_chromedriver as uc
 from sqlalchemy.ext.asyncio import AsyncSession
-import uuid
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 from database.repositories import DatabaseManager
 from database.models import User
+from domain.auth.schemas import BookRequest
 from .auth import request_code, verify_code
-
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.action_chains import ActionChains
+import time
+import os
 
 sessions = {}
 
@@ -81,44 +84,52 @@ class WildberriesAuthService:
 
         return cookies
 
-    async def request_auth(self, user_id: int, phone: str) -> Dict:
+    def create_new_driver(self, phone: str):
+        """Создаем новый драйвер для пользователя"""
+        profile_dir = os.path.abspath(f"chrome_profile/{phone}")
+
+        options = Options()
+        options.add_argument(f"--user-data-dir={profile_dir}")  # ✅ persistent browser profile
+        options.add_argument("--profile-directory=Default")
+
+        return uc.Chrome(headless=True, options=options)
+
+    async def request_auth(self, phone: str) -> Dict:
         """Запрос кода авторизации (первый этап)"""
         try:
             # Создаем драйвер
 
-            options = Options()
-            options.add_argument("--no-sandbox")
-            options.add_argument("--disable-dev-shm-usage")
-            options.add_argument("--headless")
-
-            driver = webdriver.Remote(
-                command_executor="http://localhost:4444/wd/hub",
-                options=options
-            )
+            driver = self.create_new_driver(phone)
 
             # Запрашиваем код
             request_code(driver, phone)
 
+            time.sleep(5)
+
             # Генерируем уникальный session_id
-            session_id = str(uuid.uuid4())
+            session_id = phone
 
             # Сохраняем сессию
             self._active_sessions[session_id] = {
-                'user_id': user_id,
                 'phone': phone,
                 'driver': driver,
-                'created_at': datetime.utcnow()
+                'created_at': datetime.utcnow(),
+                'verified': False,
             }
 
-            # Создаем или получаем пользователя
-            user = await self.get_user(user_id)
-            if not user:
-                user = await self.create_user(user_id)
+            if "Запрос кода возможен через" in driver.page_source:
+                # Закрываем драйвер
+                driver.quit()
 
+                # Удаляем сессию
+                del self._active_sessions[session_id]
+                return {
+                    'success': False,
+                    'message': 'Запрос кода возможен через некоторое время. Попробуйте позже.',
+                }
             return {
                 'success': True,
                 'message': 'Код подтверждения отправлен на указанный номер',
-                'user_id': user_id,
                 'session_id': session_id
             }
 
@@ -127,56 +138,40 @@ class WildberriesAuthService:
             return {
                 'success': False,
                 'message': f'Ошибка запроса кода: {str(e)}',
-                'user_id': user_id,
                 'session_id': None
             }
 
-    async def confirm_auth(self, user_id: int, phone: str, verification_code: str, session_id: str) -> Dict:
+    async def confirm_auth(self, phone: str, verification_code: str) -> Dict:
         """Подтверждение авторизации (второй этап)"""
         try:
             # Проверяем сессию
-            if session_id not in self._active_sessions:
+            if phone not in self._active_sessions:
                 return {
                     'success': False,
                     'message': 'Сессия не найдена или истекла. Запросите код заново.',
-                    'user_id': user_id
                 }
 
-            session_data = self._active_sessions[session_id]
-
-            # Проверяем соответствие данных
-            if session_data['user_id'] != user_id or session_data['phone'] != phone:
-                return {
-                    'success': False,
-                    'message': 'Данные сессии не соответствуют запросу',
-                    'user_id': user_id
-                }
+            session_data = self._active_sessions[phone]
 
             driver = session_data['driver']
 
             # Вводим код и получаем куки
-            cookies = verify_code(driver, verification_code)
+            result = verify_code(driver, verification_code)
 
-            context = {
-                "cookies": driver.get_cookies(),
-                "localStorage": driver.execute_script("return {...localStorage};"),
-                "sessionStorage": driver.execute_script("return {...sessionStorage};")
-            }
+            if not result["success"]:
+                # Закрываем драйвер
+                driver.quit()
 
-            # Закрываем драйвер
-            driver.quit()
-
-            # Удаляем сессию
-            del self._active_sessions[session_id]
-
-            # Сохраняем куки
-            await self.save_cookies(user_id, cookies)
+                # Удаляем сессию
+                del self._active_sessions[phone]
+                return {
+                    'success': False,
+                    'message': 'Неверный код подтверждения',
+                }
 
             return {
                 'success': True,
                 'message': 'Пользователь успешно аутентифицирован',
-                'user_id': user_id,
-                'context': context
             }
 
         except Exception as e:
@@ -184,7 +179,6 @@ class WildberriesAuthService:
             return {
                 'success': False,
                 'message': f'Ошибка подтверждения: {str(e)}',
-                'user_id': user_id
             }
 
     async def refresh_cookies(self, user_id: int) -> bool:
@@ -224,4 +218,111 @@ class WildberriesAuthService:
                     session_data['driver'].quit()
                 except:
                     pass
-            del self._active_sessions[session_id] 
+            del self._active_sessions[session_id]
+
+    def close_popups(self, driver):
+        """
+        Принятие условий использования, если появляется соответствующий попап, чтобы не мешал дальнейшей работе.
+        """
+
+        try:
+            buttons = driver.find_elements(By.XPATH, "//button[.//span[text()='Принимаю']]")
+            if buttons:
+                buttons[0].click()
+        except Exception as ex:
+            print(ex)
+
+        try:
+            buttons = driver.find_elements(By.XPATH, "div[class*='Button-tooltip'][role='button'][tabindex='0']")
+            if buttons:
+                buttons[0].click()
+        except Exception as ex:
+            print(ex)
+
+        try:
+            buttons = driver.find_elements(By.XPATH, "div[class*='Tooltip-hint-view__close-button'][aria-label='Close'][data-action='close']")
+            if buttons:
+                buttons[0].click()
+        except Exception as ex:
+            print(ex)
+
+    async def book(self, book_data: BookRequest) -> Dict:
+        """Бронирование товара"""
+
+        driver = self.create_new_driver(book_data.phone)
+
+        driver.get(
+            f"https://seller.wildberries.ru/supplies-management/all-supplies/supply-detail?preorderId&supplyId={book_data.supply_id}"
+        )
+
+        wait = WebDriverWait(driver, 15)
+
+        self.close_popups(driver)
+
+        # Wait for any buttons to appear
+        buttons = wait.until(EC.presence_of_all_elements_located((By.CLASS_NAME, "Supply-detail-options__plan-desktop-button__-N407e2FDC")))
+        if len(buttons) >= 1:
+            buttons[0].click()
+        else:
+            driver.quit()
+            print("⚠️ Not enough buttons found on page.")
+            return {
+                'success': False,
+                'message': 'Не удалось найти кнопку бронирования'
+            }
+
+        time.sleep(3)  # Let popup render
+        self.close_popups(driver)
+        confirm_pop_up = driver.find_elements(By.XPATH, """//*[@id="Portal-modal"]/div[5]/div/div/div[4]/div[1]/button""")
+        if confirm_pop_up:
+            confirm_pop_up[0].click()
+            time.sleep(3)
+
+        self.close_popups(driver)
+
+        rows = driver.find_elements(By.TAG_NAME, "tr")
+        target_date = get_formated_date(book_data.dt)
+
+        for row in rows:
+            items = row.find_elements(By.TAG_NAME, "td")
+            for item in items:
+                spans = item.find_elements(By.TAG_NAME, "span")
+                if spans and target_date in spans[0].text:
+                    driver.execute_script("arguments[0].scrollIntoView(true);", item)
+                    popup_divs = item.find_elements(By.CSS_SELECTOR, "div.Custom-popup")
+
+                    if popup_divs:
+
+                        ActionChains(driver).scroll_to_element(item).move_to_element(item).perform()
+                        button = item.find_elements(By.TAG_NAME, "button")[-1]
+                        ActionChains(driver).move_to_element(button).perform()
+                        button.click()
+                        time.sleep(2)
+
+                        confirm_buttons = driver.find_elements(By.TAG_NAME, "button")
+                        for confirm_button in confirm_buttons:
+                            print("confirm_button.text", confirm_button.text)
+                            if "Перенести" == confirm_button.text.strip():
+                                confirm_button.click()
+                                time.sleep(10)
+                                print("✅ Supply successfully booked.")
+
+                                driver.quit()
+                                return {
+                                    'success': True,
+                                    'message': 'Товар успешно забронирован'
+                                }
+        driver.quit()
+        print("⚠️ Target date not found or booking failed.")
+        return {
+            'success': False,
+            'message': 'Не удалось забронировать товар на указанную дату'
+        }
+
+
+def get_formated_date(d: date) -> str:
+    month_names = [
+        "января", "февраля", "марта", "апреля", "мая", "июня",
+        "июля", "августа", "сентября", "октября", "ноября", "декабря"
+    ]
+    return f"{d.day} {month_names[d.month - 1]}"

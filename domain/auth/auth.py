@@ -73,15 +73,7 @@ def request_code(driver: uc.Chrome, number: str) -> None:
     send_button.click()
 
 
-def verify_code(driver: uc.Chrome, verification_code: str) -> list[dict]:
-    """
-    Function that proceeds seller verification on seller.wildberries.ru
-    Args:
-        driver - selenium web driver
-        verification_code - 6-digits code from SMS
-    Returns:
-        list[dict] - essential user cookies
-    """
+def verify_code(driver: uc.Chrome, verification_code: str) -> dict:
     code_input_containers: list[WebElement] = WebDriverWait(driver, 30).until(
         EC.presence_of_all_elements_located(
             (By.CSS_SELECTOR, CODE_INPUT_CONTAINER_CSS_SELECTOR)
@@ -94,5 +86,15 @@ def verify_code(driver: uc.Chrome, verification_code: str) -> list[dict]:
         code_input_cell.send_keys(verification_code[i])
         sleep(0.2)
 
-    return driver.get_cookies()
+    sleep(5)
 
+    if "Неверный код" in driver.page_source:
+        return {
+            "success": False,
+            "message": "Неверный код из SMS"
+        }
+
+    return {
+        "success": True,
+        "message": "Авторизация успешна",
+    }

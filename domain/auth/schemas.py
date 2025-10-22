@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict
-from datetime import datetime
+from datetime import datetime, date
 
 
 class UserCreate(BaseModel):
@@ -40,18 +40,11 @@ class CookieResponse(BaseModel):
 
 class UserWithCookiesResponse(BaseModel):
     """Схема ответа с пользователем и куками"""
-    id: int
-    created_at: datetime
-    updated_at: datetime
-    cookies: List[CookieResponse]
-
-    class Config:
-        from_attributes = True
+    success: bool
 
 
 class RequestAuthRequest(BaseModel):
     """Схема для запроса кода авторизации"""
-    user_id: int = Field(..., description="ID пользователя")
     phone: str = Field(..., description="Номер телефона в формате 9991231212")
 
 
@@ -59,16 +52,12 @@ class RequestAuthResponse(BaseModel):
     """Схема ответа запроса авторизации"""
     success: bool
     message: str
-    user_id: Optional[int] = None
-    session_id: Optional[str] = None
 
 
 class ConfirmAuthRequest(BaseModel):
     """Схема для подтверждения авторизации"""
-    user_id: int = Field(..., description="ID пользователя")
     phone: str = Field(..., description="Номер телефона в формате 9991231212")
     verification_code: str = Field(..., description="6-значный код из SMS")
-    session_id: str = Field(..., description="ID сессии из ответа запроса авторизации")
 
 
 class ConfirmAuthResponse(BaseModel):
@@ -88,4 +77,15 @@ class CookiesResponse(BaseModel):
 class ErrorResponse(BaseModel):
     """Схема ответа с ошибкой"""
     error: str
+    message: str
+
+
+class BookRequest(BaseModel):
+    phone: str
+    supply_id: int
+    dt: date
+
+
+class BookResponse(BaseModel):
+    success: bool
     message: str
