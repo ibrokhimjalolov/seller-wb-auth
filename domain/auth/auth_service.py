@@ -7,6 +7,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from database.repositories import DatabaseManager
 from database.models import User
+from selenium import webdriver
 from domain.auth.schemas import BookRequest
 from .auth import request_code, verify_code
 from selenium.webdriver.chrome.options import Options
@@ -86,13 +87,18 @@ class WildberriesAuthService:
 
     def create_new_driver(self, phone: str):
         """Создаем новый драйвер для пользователя"""
-        profile_dir = os.path.abspath(f"chrome_profile/{phone}")
+        profile_dir = os.path.abspath(f"/chrome_profile/{phone}")
 
         options = Options()
         options.add_argument(f"--user-data-dir={profile_dir}")  # ✅ persistent browser profile
         options.add_argument("--profile-directory=Default")
+        # options.add_argument("--headless=new")
 
-        return uc.Chrome(headless=True, options=options)
+        # return uc.Chrome(headless=True, options=options)
+        return webdriver.Remote(
+            command_executor='http://127.0.0.1:4444/wd/hub',
+            options=options,
+        )
 
     async def request_auth(self, phone: str) -> Dict:
         """Запрос кода авторизации (первый этап)"""
