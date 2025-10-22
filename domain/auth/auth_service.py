@@ -92,7 +92,7 @@ class WildberriesAuthService:
         options.add_argument(f"--user-data-dir={profile_dir}")  # ✅ persistent browser profile
         options.add_argument("--profile-directory=Default")
 
-        return uc.Chrome(headless=False, options=options)
+        return uc.Chrome(headless=True, options=options)
 
     async def request_auth(self, phone: str) -> Dict:
         """Запрос кода авторизации (первый этап)"""
