@@ -97,7 +97,7 @@ class WildberriesAuthService:
 
         # return uc.Chrome(headless=True, options=options)
         return webdriver.Remote(
-            command_executor='http://127.0.0.1:4444/wd/hub',
+            command_executor='http://89.104.74.117:4444/wd/hub',
             options=options,
         )
 
