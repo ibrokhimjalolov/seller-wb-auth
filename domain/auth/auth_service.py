@@ -93,6 +93,13 @@ class WildberriesAuthService:
         options.add_argument(f"--user-data-dir={profile_dir}")  # ✅ persistent browser profile
         options.add_argument("--profile-directory=Default")
         options.add_argument("--disable-blink-features=AutomationControlled")
+        options.add_experimental_option("excludeSwitches", ["enable-automation"])
+        options.add_experimental_option("useAutomationExtension", False)
+        options.add_argument("--disable-infobars")
+        options.add_argument("--disable-extensions")
+        options.add_argument("--disable-gpu")
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
         # options.add_argument("--headless=new")
 
         # return uc.Chrome(headless=True, options=options)
