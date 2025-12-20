@@ -132,21 +132,28 @@ class WildberriesAuthService:
                 'verified': False,
             }
 
-            if "Запрос кода возможен через" in driver.page_source:
+            if "Введите код из СМС" in driver.page_source:
+                return {
+                    'success': True,
+                    'message': 'Код подтверждения отправлен на указанный номер',
+                    'session_id': session_id
+                }
+            else:
                 # Закрываем драйвер
                 driver.quit()
-
                 # Удаляем сессию
                 del self._active_sessions[session_id]
+
+                if "Запрос кода возможен через" in driver.page_source:
+                    return {
+                        'success': False,
+                        'message': 'Запрос кода возможен через некоторое время. Попробуйте позже.',
+                    }
                 return {
                     'success': False,
-                    'message': 'Запрос кода возможен через некоторое время. Попробуйте позже.',
+                    'message': 'Не удалось отправить код подтверждения. Проверьте номер телефона и попробуйте позже.',
+                    'session_id': None
                 }
-            return {
-                'success': True,
-                'message': 'Код подтверждения отправлен на указанный номер',
-                'session_id': session_id
-            }
 
         except Exception as e:
             print(f"Ошибка запроса авторизации: {e}")
