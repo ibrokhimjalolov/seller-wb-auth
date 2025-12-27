@@ -1,3 +1,4 @@
+import shutil
 from typing import List, Dict, Optional
 from datetime import datetime, date
 import undetected_chromedriver as uc
@@ -85,9 +86,13 @@ class WildberriesAuthService:
 
         return cookies
 
-    def create_new_driver(self, phone: str):
+    def create_new_driver(self, phone: str, new_profile=False):
         """Создаем новый драйвер для пользователя"""
         profile_dir = os.path.abspath(f"/chrome_profile/{phone}")
+
+        if new_profile:
+            if os.path.exists(profile_dir):
+                shutil.rmtree(profile_dir)
 
         options = Options()
         options.add_argument(f"--user-data-dir={profile_dir}")  # ✅ persistent browser profile
@@ -114,7 +119,7 @@ class WildberriesAuthService:
         try:
             # Создаем драйвер
 
-            driver = self.create_new_driver(phone)
+            driver = self.create_new_driver(phone, new_profile=True)
 
             # Запрашиваем код
             request_code(driver, phone)
