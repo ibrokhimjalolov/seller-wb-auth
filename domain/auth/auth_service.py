@@ -91,7 +91,9 @@ class WildberriesAuthService:
         profile_dir = os.path.abspath(f"/chrome_profile/{phone}")
 
         if new_profile:
+            print("Removing old profile", phone)
             if os.path.exists(profile_dir):
+                print("Removing old profile", phone)
                 shutil.rmtree(profile_dir)
 
         options = Options()
