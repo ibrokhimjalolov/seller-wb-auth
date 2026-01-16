@@ -13,7 +13,9 @@ NUMBER_INPUT_CSS_SELECTOR = ".SimpleInput-JIIQvb037j"
 COUNTRY_CODE_INPUT_CSS_SELECTOR = ".FormPhoneInputBorderless__select-dR9O1RdqnB"
 NUMBER_INPUT_BUTTON_CSS_SELECTOR = "button.IconButton-dyRP\\+yvOcb:nth-child(1)"
 CODE_INPUT_CONTAINER_CSS_SELECTOR = "li.SimpleCodeInput__item-Pk-qM5fzm\\+"
-COUNTRY_CODES = ["374", "375", "852", "7", "996", "86", "853", "7", "90", "998"]
+COUNTRY_CODES = ["374", "375", "852", "7X", "996", "86", "853", "7", "90", "998"]
+
+## 7X bu Qozoqiston nomeri
 
 
 def request_code(driver: uc.Chrome, number: str) -> None:
