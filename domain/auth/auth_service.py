@@ -111,10 +111,18 @@ class WildberriesAuthService:
         # options.add_argument("--headless=new")
 
         # return uc.Chrome(headless=True, options=options)
-        return webdriver.Remote(
+        driver = webdriver.Remote(
             command_executor='http://127.0.0.1:4444/wd/hub',
             options=options,
         )
+
+        # ✅ Set timezone to Moscow
+        driver.execute_cdp_cmd(
+            "Emulation.setTimezoneOverride",
+            {"timezoneId": "Europe/Moscow"}
+        )
+
+        return driver
 
     async def request_auth(self, phone: str) -> Dict:
         """Запрос кода авторизации (первый этап)"""
